@@ -1,0 +1,274 @@
+{
+  "info": {
+    "_postman_id": "215afe9b-9b7d-459d-b020-361dbf1c5bf4",
+    "name": "Don't forget to select an environment",
+    "description": "## We always forget to select an environment\n\nIt's a best practice to store API token value in environment secret variables. Environment variables can also be used to store other variables uses in scripts.\n\nBut when opening a collection, we often forget to select an environment and spend a few seconds if not minutes or more trying to figure out what the problem is with a request. Just to realize in the end that we just forgot to select an environment.\n\nThis collection demonstrates how to take advantage of `pm.environment.name` in Pre-Scripts to prevent sending a request and have a clear error message when an environment is not selected.\n\n![](https://apihandyman.io/postman-images/postman-tips-and-tricks/dont-forget-to-select-an-environment/use-case-0.png)\n\nThe use case that will be used to demonstrate all that is retrieving a tweet with Twitter v2 API. The aim of this collection being error handling, you'll need to have an actual access to Twitter v2 API only if you want to make the request succeed.\n\n## How it works\n\nThe magic is mostly handled in the Pre-request script regarding checking an environment is selected. But what happens there allows to have more precise error message on 401 errors in Test script.\n\n### Collection Pre-request Script\n\n``` javascript\nconst selectedEnvironment = pm.environment.name;\nconst tokenVariableName = pm.collectionVariables.get(\"token_variable_name\");\nconst tokenVariableValue = pm.environment.get(tokenVariableName);\nif(selectedEnvironment === undefined) {\n    message = `No environment containing a ${tokenVariableName}` +\n              `variable has been selected`;\n}\nelse if...\n}\nif(message) {\n    throw new Error(message);\n}\n\n```\n\nThe collection level Pre-Request script checks that an environment is selected by verifying the value of `pm.environment.name` .\n\nIt also checks a specific variable is defined and has a correct value. The name of that variable is defined in the `token_variable_name` collection variable. The script also verifies the the variable has a value and that value is not the default one.\n\nf there's anything wrong with one of the checks, the request is not sent and a red message explaining exactly what the problem is appears on screen thanks to `throw new Error(message)`.\n\n### Collection Tests\n\n``` javascript\nif(pm.response.code === 401) {\n    const selectedEnvironment = pm.environment.name;\n    const tokenVariableName = pm.collectionVariables.get(\"token_variable_name\");\n    const tokenVariableValue = pm.environment.get(tokenVariableName);\n    const message = `Selected environment (${selectedEnvironment}) contains` +\n                    `a ${tokenVariableName} variable but its value is` +\n                    `probably not valid`;\n    pm.test(\"Unauthorized request (401)\", function() {\n        pm.expect.fail(message);\n    });\n}\n\n```\n\nThe collection level Tests script take for granted that the Pre-Request script has done its job. As there was an environment selected and it contains the expected variable which is not empty or does not have a default value, the test script can guess the token sent is invalid when receiving a 401 Unauthorized response.\n\n### Collection variables\n\nIn order to make the code easily reusable across various collection, some collection variable are used:\n\n| **VARIABLE** | **VALUE** | **DESCRIPTION** |\n| --- | --- | --- |\n| token_variable_name | twitter_token | The name of variable used in the token field in collection Authorization configuration. |\n| token_variable_default_value | PUT_YOUR_TOKEN_IN_CURRENT_VALUE | The default value of the variable (hence, the one in INITIAL VALUE) |\n\n### Environment variables\n\nThis collection requires the creation of an environment containing the following variables. This workspace comes with ready-to-use environment to test the various behaviors of the scripts (see Test cases below).\n\n> ⛔️ Never store API tokens in initial value. Read [How to use API Keys](https://blog.postman.com/how-to-use-api-keys/) to learn more.\n\n| **VARIABLE** | **TYPE** | **INITIAL VALUE** | **CURRENT VALUE** |\n| --- | --- | --- | --- |\n| twitter_token | secret | PUT_YOUR_TOKEN_IN_CURRENT_VALUE | A Twitter API bearer token (Read [Twitter API documentation](https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens) to get one) |\n\n## Test cases\n\nUse one of the following test cases to see the collection level Pre-Script and Tests scripts in action.\n\n> ℹ️ Note that you can make the environment drop list larger to see full environment names.\n\n### No environment selected\n\n![](https://apihandyman.io/postman-images/postman-tips-and-tricks/dont-forget-to-select-an-environment/use-case-0.png)\n\n1.  Set environment drop list on \"No Environment\" (It's the default value when opening the collection)\n2.  Send the `Get a tweet` request\n    \n\n### Empty environment\n\n![](https://apihandyman.io/postman-images/postman-tips-and-tricks/dont-forget-to-select-an-environment/use-case-1.png)\n\n1.  Create an environment (don't create any variable)\n2.  Select the environment\n3.  Send the `Get a tweet` request\n    \n\n### Wrong name\n\n![](https://apihandyman.io/postman-images/postman-tips-and-tricks/dont-forget-to-select-an-environment/use-case-2.png)\n\n1.  Create an environment\n2.  Add a `twitter_tokenn` variable to your environment (yes, 2 n's, it does not match the `token_variable_name` collection variable value)\n3.  Set INITIAL VALUE to `PUT_YOUR_TOKEN_IN_CURRENT_VALUE` (it matches `token_variable_default_value` collection variable value)\n4.  Save the environment\n5.  Select the environment\n6.  Send the `Get a tweet` request\n    \n\n### Default value\n\n![](https://apihandyman.io/postman-images/postman-tips-and-tricks/dont-forget-to-select-an-environment/use-case-3.png)\n\n1.  Create an environment\n2.  Add a `twitter_token` variable to your environment (it matches the `token_variable_name` collection variable value)\n3.  Set INITIAL VALUE to `PUT_YOUR_TOKEN_IN_CURRENT_VALUE` (it matches `token_variable_default_value` collection variable value)\n4.  Save the environment\n5.  Select the environment\n6.  Send the `Get a tweet` request\n    \n\n### Invalid token\n\n![](https://apihandyman.io/postman-images/postman-tips-and-tricks/dont-forget-to-select-an-environment/use-case-4.png)\n\n1.  Create an environment\n2.  Add a `twitter_token` variable to your environment (it matches the `token_variable_name` collection variable value)\n3.  Set INITIAL VALUE to `PUT_YOUR_TOKEN_IN_CURRENT_VALUE` (it matches `token_variable_default_value` collection variable value)\n4.  Set CURRENT VALUE to `INVALID_TOKEN`\n5.  Save the environment\n6.  Select the environment\n7.  Send the `Get a tweet` request\n    \n\n### Valid token\n\n![](https://apihandyman.io/postman-images/postman-tips-and-tricks/dont-forget-to-select-an-environment/use-case-5.png)\n\n1.  Read [Twitter API documentation](https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens) to get a bearer token\n2.  Create an environment\n3.  Add a `twitter_token` variable to your environment (it matches the `token_variable_name` collection variable value)\n4.  Set INITIAL VALUE to `PUT_YOUR_TOKEN_IN_CURRENT_VALUE` (it matches `token_variable_default_value` collection variable value)\n5.  Put the bearer token value in `twitter_token` variable current value (NOT the initial value!)\n6.  Save the environment\n7.  Select the environment\n8.  Send the `Get a tweet` request",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get a tweet",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "id": "3ee9b152-a2e4-4cca-af8e-2f4447485f97",
+            "exec": [
+              "pm.test(\"Tweet successfully read\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "_postman_id": "9b5a4180-9ad4-4672-9d1d-207fa7ab9289",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "https://api.twitter.com/2/tweets/1387820661742112771"
+      },
+      "response": [
+        {
+          "id": "13df5d1c-1975-49d5-841b-55ab42a3cee1",
+          "name": "Invalid token",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer INVALID-TOKEN-VALUE",
+                "type": "text"
+              }
+            ],
+            "url": "https://api.twitter.com/2/tweets/1387820661742112771"
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "content-type",
+              "value": "application/problem+json"
+            },
+            {
+              "key": "cache-control",
+              "value": "no-cache, no-store, max-age=0"
+            },
+            {
+              "key": "content-length",
+              "value": "99"
+            },
+            {
+              "key": "x-response-time",
+              "value": "99"
+            },
+            {
+              "key": "x-connection-hash",
+              "value": "a09f478f7cac79b84d283b81f810cc3e47a2fc0d38fa0c301fdc89f02cf0c3f0"
+            },
+            {
+              "key": "date",
+              "value": "Sat, 26 Mar 2022 15:05:54 GMT"
+            },
+            {
+              "key": "server",
+              "value": "tsa_f"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "{\n    \"title\": \"Unauthorized\",\n    \"type\": \"about:blank\",\n    \"status\": 401,\n    \"detail\": \"Unauthorized\"\n}"
+        },
+        {
+          "id": "d8122e5f-c787-41aa-b070-286993c17e4a",
+          "name": "Valid token",
+          "originalRequest": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer VALID-TOKEN-VALUE",
+                "type": "text"
+              }
+            ],
+            "url": "https://api.twitter.com/2/tweets/1387820661742112771"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "date",
+              "value": "Sat, 26 Mar 2022 15:06:25 UTC"
+            },
+            {
+              "key": "server",
+              "value": "tsa_f"
+            },
+            {
+              "key": "api-version",
+              "value": "2.39"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "cache-control",
+              "value": "no-cache, no-store, max-age=0"
+            },
+            {
+              "key": "content-length",
+              "value": "301"
+            },
+            {
+              "key": "x-access-level",
+              "value": "read"
+            },
+            {
+              "key": "x-frame-options",
+              "value": "SAMEORIGIN"
+            },
+            {
+              "key": "content-encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "x-xss-protection",
+              "value": "0"
+            },
+            {
+              "key": "x-rate-limit-limit",
+              "value": "300"
+            },
+            {
+              "key": "x-rate-limit-reset",
+              "value": "1648308085"
+            },
+            {
+              "key": "content-disposition",
+              "value": "attachment; filename=json.json"
+            },
+            {
+              "key": "x-content-type-options",
+              "value": "nosniff"
+            },
+            {
+              "key": "x-rate-limit-remaining",
+              "value": "299"
+            },
+            {
+              "key": "strict-transport-security",
+              "value": "max-age=631138519"
+            },
+            {
+              "key": "x-response-time",
+              "value": "157"
+            },
+            {
+              "key": "x-connection-hash",
+              "value": "a09f478f7cac79b84d283b81f810cc3e47a2fc0d38fa0c301fdc89f02cf0c3f0"
+            }
+          ],
+          "cookie": [],
+          "responseTime": null,
+          "body": "{\n    \"data\": {\n        \"id\": \"1387820661742112771\",\n        \"text\": \"Want to learn how to design Web APIs? You should read my book:\\n\\n- The Design of Web APIs https://t.co/jocUbds6ki\\n- Web APIの設計 https://t.co/2Qlkqtjd5c\\n- 웹 API 디자인 https://t.co/ZQP0pYSzOm\\n- ПРОЕКТИРОВАНИЕ ВЕБ-API https://t.co/oH0OXxB62D\\n\\n#apidesign #api https://t.co/qWNBAfzaLp\"\n    }\n}"
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": {
+      "token": "{{twitter_token}}"
+    }
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "id": "b1265baa-892e-4393-97cd-23a81f7e28cb",
+        "type": "text/javascript",
+        "exec": [
+          "/*******************************************/",
+          "/*  Checks a valid environment containing  */",
+          "/*  a specific variable used as bearer     */",
+          "/*  token is selected                      */",
+          "/*******************************************/",
+          "",
+          "/* The name and default value of the variable used in Authorization",
+          "   and checked here is defined at collection level.",
+          "   That way, this code snippet can be easily copied to other",
+          "   collections */",
+          "const tokenVariableName = pm.collectionVariables.get(\"token_variable_name\");",
+          "const tokenVariableDefaultValue = pm.collectionVariables.get(\"token_variable_default_value\");",
+          "// The message indicating how to solve the problem",
+          "let message;",
+          "// Get selected environment name (undefined if none is selected)",
+          "const selectedEnvironment = pm.environment.name;",
+          "// Get token environment variable value (undefined if none exists or if current value is empty) ",
+          "const tokenVariableValue = pm.environment.get(tokenVariableName);",
+          "",
+          "if(selectedEnvironment === undefined) {",
+          "    message = `No environment containing a ${tokenVariableName} variable has been selected`;",
+          "}",
+          "else if(tokenVariableValue === undefined) {",
+          "    message = `Selected environment (${selectedEnvironment}) does not contain a ${tokenVariableName} variable`;",
+          "}",
+          "else if(tokenVariableValue.length === 0) {",
+          "    message = `Selected environment (${selectedEnvironment}) contains a ${tokenVariableName} variable but its current value is empty`;",
+          "}",
+          "else if(tokenVariableValue === tokenVariableDefaultValue) {",
+          "    message = `Selected environment (${selectedEnvironment}) contains a ${tokenVariableName} variable but its current value is the default one (${tokenVariableDefaultValue})`;",
+          "}",
+          "",
+          "if(message) {",
+          "    throw new Error(message);",
+          "}",
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "id": "2e5e0eb1-3d2b-4ddf-927b-2ed6ddee106c",
+        "type": "text/javascript",
+        "exec": [
+          "/*",
+          "    Thanks to what is don in Pre-request Script, we're sure a token",
+          "    has been passed. So if a 401 Unauthorized is returned, that ",
+          "    means the token is invalid.",
+          "*/",
+          "if(pm.response.code === 401) {",
+          "    const selectedEnvironment = pm.environment.name;",
+          "    const tokenVariableName = pm.collectionVariables.get(\"token_variable_name\");",
+          "    const tokenVariableValue = pm.environment.get(tokenVariableName);",
+          "    const message = `Selected environment (${selectedEnvironment}) contains a ${tokenVariableName} variable but its value is probably not valid`;",
+          "    pm.test(\"Unauthorized request (401)\", function() {",
+          "        pm.expect.fail(message);",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "id": "6275df2b-63e9-46ab-9578-6ab569b98b22",
+      "key": "token_variable_name",
+      "value": "twitter_token",
+      "type": "string"
+    },
+    {
+      "id": "30d44cbd-f9e5-410e-a43f-f8d1267ffe1f",
+      "key": "token_variable_default_value",
+      "value": "PUT_YOUR_TOKEN_IN_CURRENT_VALUE",
+      "type": "string"
+    }
+  ]
+}
